@@ -1,65 +1,87 @@
 # web_back
 
-AutoHotkey + PowerShell helper for FastAPI backend study that sends clipboard text/image to Groq LLM models and copies the response back to your clipboard.
-
-## What it does
-
-- `Ctrl + Numpad2` (`src/casual.ahk`): returns a short, casual FastAPI backend explanation.
-- `Ctrl + Numpad3` (`src/concise.ahk`): returns a concise, direct FastAPI backend explanation.
-- `Ctrl + '` (`src/auto_sender.ahk`): types clipboard text directly into the active window.
-- Supports:
-  - text from clipboard
-  - image from clipboard (if present)
-- Writes the response to `%TEMP%\\gemini_output.txt`, then copies it to clipboard.
+A lightweight AI assistant hotkey utility for Windows. Captures clipboard text and/or screenshot, sends it to the Groq API, and returns the answer instantly via tooltip and clipboard.
 
 ## Files
 
-- `src/casual.ahk` -> hotkey `Ctrl+Numpad2`, calls `src/gemini.ps1`
-- `src/concise.ahk` -> hotkey `Ctrl+Numpad3`, calls `src/gemini2.ps1`
-- `src/auto_sender.ahk` -> hotkey `Ctrl+'`, sends clipboard text directly
-- `src/gemini.ps1` -> casual backend-study response style
-- `src/gemini2.ps1` -> concise backend-study response style
+```
+src/
+  assistant.ahk           -- Hotkey definitions and IPC orchestration (AHK v2)
+  auto_sender.ahk         -- Auxiliary automation script
+  gemini.ps1              -- Groq API backend (PowerShell)
+  groq_api_key.local.txt  -- Your personal API key (git-ignored)
+  groq_api_key.txt        -- Placeholder template (committed, not used if placeholder)
+```
 
-## Requirements
+## Hotkeys
 
-- Windows
-- AutoHotkey v2
-- PowerShell (Windows PowerShell 5.1+ or PowerShell 7+)
-- Internet access
-- Groq API key
+| Hotkey | Mode | Input | Output |
+|---|---|---|---|
+| `Ctrl+Numpad2` | Casual | clipboard text and/or image | 1-2 sentence natural answer |
+| `Ctrl+Numpad3` | Single-choice | clipboard text and/or image | One letter: `B` |
+| `Ctrl+Numpad4` | Multiple-choice | clipboard text and/or image | Letter list: `A, C` |
+| `Ctrl+Numpad9` | Re-read | -- | Shows + copies last saved answer, no API call |
+
+All modes copy the result to clipboard and display it as a tooltip for 5 seconds.
 
 ## Setup
 
-1. Install AutoHotkey v2.
-2. Put these files in one folder.
-3. Open `src/gemini.ps1` and `src/gemini2.ps1` and set your Groq API key.
-4. No path edits needed: `src/casual.ahk` and `src/concise.ahk` now auto-resolve PowerShell scripts from their own folder (`A_ScriptDir`).
-5. Run the `.ahk` script(s) (double-click or run through AutoHotkey).
+### 1. Install AutoHotkey v2
 
-## How to use
+Download from https://www.autohotkey.com — install the v2 branch.
 
-1. Copy question text to clipboard.
-2. Optional: copy an image to clipboard.
-3. Press one of the hotkeys:
-   - `Ctrl + Numpad2` for casual backend-study explanation
-   - `Ctrl + Numpad3` for concise backend-study explanation
-   - `Ctrl + '` to type clipboard text directly
-4. Wait for beep:
-   - high short beep = success
-   - low longer beep = failed/empty output
-5. Paste clipboard anywhere to get the model answer.
+### 2. Add your Groq API key
 
-## Temp files used
+Create `src/groq_api_key.local.txt` and paste your key (no quotes, no spaces):
 
-The scripts read/write these files in `%TEMP%`:
+```
+gsk_yourkeyhere
+```
 
-- `gemini_input.txt`
-- `gemini_image.png`
-- `gemini_output.txt`
+Get a free key at https://console.groq.com
 
-## Troubleshooting
+### 3. Fix encoding on non-English Windows (required for Russian/Kazakh locale)
 
-- No output: verify API key, internet connection, and script paths.
-- Image not detected: make sure an actual image is in clipboard.
-- PowerShell blocked: keep `-ExecutionPolicy Bypass` in `RunWait` call.
-- Still failing: check `%TEMP%\\gemini_output.txt` for error text.
+PowerShell defaults to the regional code page (e.g. Windows-1251) when reading
+.ps1 files without a BOM. Run this once after placing gemini.ps1 in the src folder:
+
+```powershell
+$p = "C:\path\to\src\gemini.ps1"
+[IO.File]::WriteAllText($p, (Get-Content $p -Raw), [Text.UTF8Encoding]::new($true))
+```
+
+### 4. Run
+
+Double-click `src/assistant.ahk`. The AHK tray icon confirms it is active.
+
+## How it works
+
+```
+Ctrl+Numpad_  ->  AHK writes clipboard text  ->  %TEMP%\gemini_input.txt
+              ->  AHK captures clipboard image (RunWait, synchronous)
+                       ->  %TEMP%\gemini_image.png
+              ->  AHK launches gemini.ps1 (RunWait, blocks until exit)
+                       ->  PS writes gemini.lock   (acquired)
+                       ->  PS calls Groq API
+                       ->  PS writes gemini_output.txt
+                       ->  PS deletes gemini.lock  (released)
+              ->  AHK reads output
+              ->  result copied to clipboard + shown in tooltip for 5 s
+```
+
+The lock file is a write-complete sentinel. AHK reads the output only after
+`RunWait` returns, by which point all PS file handles are closed. No sleep-based
+polling anywhere in the flow.
+
+## Models
+
+| Input | Model | Notes |
+|---|---|---|
+| Text only | `openai/gpt-oss-120b` | Best reasoning on Groq as of 2026 |
+| Image (with or without text) | `meta-llama/llama-4-scout-17b-16e-instruct` | Only production vision model on Groq |
+
+## API key lookup order
+
+1. `GROQ_API_KEY` environment variable
+2. `src/groq_api_key.local.txt` (recommended, git-ignored)
+3. `src/groq_api_key.txt` (skipped if it still contains the placeholder text)
