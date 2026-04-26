@@ -40,7 +40,7 @@ gsk_yourkeyhere
 
 Get a free key at https://console.groq.com
 
-### 3. Fix encoding on non-English Windows (required for Russian/Kazakh locale)
+### 3. Fix encoding on non-English Windows (required for Russian/Kazakh locale) (optional if you use English locale)
 
 PowerShell defaults to the regional code page (e.g. Windows-1251) when reading
 .ps1 files without a BOM. Run this once after placing gemini.ps1 in the src folder:
