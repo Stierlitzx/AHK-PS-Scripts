@@ -1,0 +1,34 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Local secrets / config
+.env
+.env.*
+*.secret
+*.secrets
+secrets.*
+
+# Python cache (if tools are added later)
+__pycache__/
+*.pyc
+
+# Build artifacts
+*.exe
+*.out
+*.obj
+*.pdb
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# Local notes
+notes.local.*
