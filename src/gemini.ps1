@@ -1,6 +1,21 @@
 $apiKey = $env:GROQ_API_KEY
 if ([string]::IsNullOrWhiteSpace($apiKey)) {
-    "Error: Set GROQ_API_KEY environment variable." | Out-File "$env:TEMP\gemini_output.txt" -Encoding UTF8
+    $localKeyPath = Join-Path $PSScriptRoot "groq_api_key.local.txt"
+    if (Test-Path $localKeyPath) {
+        $apiKey = (Get-Content $localKeyPath -Raw).Trim()
+    }
+}
+if ([string]::IsNullOrWhiteSpace($apiKey)) {
+    $templateKeyPath = Join-Path $PSScriptRoot "groq_api_key.txt"
+    if (Test-Path $templateKeyPath) {
+        $apiKey = (Get-Content $templateKeyPath -Raw).Trim()
+        if ($apiKey -match '^(?i)put your (q|g)roq api here$') {
+            $apiKey = ""
+        }
+    }
+}
+if ([string]::IsNullOrWhiteSpace($apiKey)) {
+    "Error: Missing API key. Put your key in src\groq_api_key.local.txt or set GROQ_API_KEY." | Out-File "$env:TEMP\gemini_output.txt" -Encoding UTF8
     exit 1
 }
 $text = if (Test-Path "$env:TEMP\gemini_input.txt") { 
