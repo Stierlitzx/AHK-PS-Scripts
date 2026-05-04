@@ -17,12 +17,13 @@ src/
 
 | Hotkey | Mode | Input | Output |
 |---|---|---|---|
-| `Ctrl+Numpad2` | Casual | clipboard text and/or image | 1-2 sentence natural answer |
-| `Ctrl+Numpad3` | Single-choice | clipboard text and/or image | One letter: `B` |
-| `Ctrl+Numpad4` | Multiple-choice | clipboard text and/or image | Letter list: `A, C` |
-| `Ctrl+Numpad9` | Re-read | -- | Shows + copies last saved answer, no API call |
+| `Ctrl+2` | Casual | clipboard text and/or image | 3-5 sentence natural answer (clipboard only, no tooltip) |
+| `Ctrl+3` | Single-choice | clipboard text and/or image | One letter: `B` (clipboard + tooltip) |
+| `Ctrl+4` | Multiple-choice | clipboard text and/or image | Letter list: `A, C` (clipboard + tooltip) |
+| `Ctrl+5` | Wiki | clipboard text and/or image | Full encyclopedia answer (clipboard only, no tooltip) |
+| `Ctrl+9` | Re-read | -- | Shows + copies last saved answer, no API call (clipboard + tooltip) |
 
-All modes copy the result to clipboard and display it as a tooltip for 5 seconds.
+All modes copy the result to the clipboard. Modes 3, 4, and 9 also display it as a tooltip for 5 seconds.
 
 ## Setup
 
@@ -57,7 +58,7 @@ Double-click `src/assistant.ahk`. The AHK tray icon confirms it is active.
 ## How it works
 
 ```
-Ctrl+Numpad_  ->  AHK writes clipboard text  ->  %TEMP%\gemini_input.txt
+Ctrl+Number   ->  AHK reads existing clipboard text  ->  %TEMP%\gemini_input.txt
               ->  AHK captures clipboard image (RunWait, synchronous)
                        ->  %TEMP%\gemini_image.jpg
               ->  AHK launches gemini.ps1 (RunWait, blocks until exit)
