@@ -14,7 +14,7 @@ Desktop.ini
 *.secret
 *.secrets
 secrets.*
-# src/groq_api_key.local.txt
+src/groq_api_key.local.txt
 
 # Python cache (if tools are added later)
 __pycache__/

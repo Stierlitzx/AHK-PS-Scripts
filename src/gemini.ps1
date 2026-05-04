@@ -2,7 +2,7 @@
 # Save with UTF-8 BOM on Russian/Kazakh Windows (run once after editing):
 #   $p = ".\gemini.ps1"; [IO.File]::WriteAllText($p,(gc $p -Raw),[Text.UTF8Encoding]::new($true))
 param(
-    [ValidateSet("casual","single","multi")]
+    [ValidateSet("casual","single","multi","wiki")]
     [string]$Mode = "casual"
 )
 
@@ -30,9 +30,8 @@ function FinishError([string]$msg) {
     Finish "Error: $msg" 1
 }
 
-# -- API key ------------------------------------------------------------------
+# -- API key: env var > .local.txt > .txt -------------------------------------
 $apiKey = $env:GROQ_API_KEY
-
 if ([string]::IsNullOrWhiteSpace($apiKey)) {
     $p = Join-Path $PSScriptRoot "groq_api_key.local.txt"
     if (Test-Path $p) { $apiKey = (Get-Content $p -Raw).Trim() }
@@ -62,31 +61,36 @@ if ($text -eq "" -and -not $hasImage) {
 }
 
 # -- Models -------------------------------------------------------------------
+#   Vision (image present): llama-4-scout  — only free vision model on Groq
+#   Text only:              llama-3.3-70b-versatile — best free text model on Groq
 $textModel   = "llama-3.3-70b-versatile"
 $visionModel = "meta-llama/llama-4-scout-17b-16e-instruct"
 
 # -- Prompts ------------------------------------------------------------------
 switch ($Mode) {
     "casual" {
-        $systemPrompt = "Answer like a student texting a friend. 1-2 short sentences only. Plain casual language. No intro, no conclusion, no 'so the answer is', just the direct answer."
+        $systemPrompt = "Answer like a knowledgeable student explaining to a friend. Write 3-5 sentences in a natural, conversational tone. Be clear and complete but keep it easy to read. No bullet points, no headers, just flowing text."
         $temperature  = 0.7
-        $max_tokens   = 120
+        $max_tokens   = 300
         $prefill      = ""
     }
     "single" {
-        # Prefill "Answer: " forces the model to continue with just the letter.
-        # max_tokens=2 gives room for one letter + possible punctuation that we strip.
         $systemPrompt = "You are taking a multiple choice exam. The question has EXACTLY ONE correct answer. Output the single letter of the correct answer and nothing else. No words, no punctuation, no explanation."
         $temperature  = 0.0
         $max_tokens   = 2
         $prefill      = "Answer: "
     }
     "multi" {
-        # max_tokens=15 is enough for up to 5 letters with separators e.g. "A, B, C, D"
         $systemPrompt = "You are taking a multiple choice exam. One or more answers may be correct. Output ONLY the correct letters separated by a comma and space. No words, no explanation. Example outputs: A / A, C / A, B, D"
         $temperature  = 0.0
         $max_tokens   = 15
         $prefill      = "Answer: "
+    }
+    "wiki" {
+        $systemPrompt = "You are a knowledgeable encyclopedia assistant. Give a thorough, well-structured explanation covering the key concepts, context, and details. Write in clear prose paragraphs (no bullet points). Aim for 6-10 sentences that fully explain the topic."
+        $temperature  = 0.5
+        $max_tokens   = 600
+        $prefill      = ""
     }
 }
 
@@ -95,9 +99,10 @@ if ($hasImage) {
     $model = $visionModel
 
     $userPrompt = switch ($Mode) {
-        "casual" { if ($text -ne "") { $text } else { "What does this show? Answer briefly." } }
+        "casual" { if ($text -ne "") { $text } else { "Explain what this shows in a few clear sentences." } }
         "single" { if ($text -ne "") { "Context: $text`nPick the single correct answer letter." } else { "Pick the single correct answer letter from the question in the image." } }
         "multi"  { if ($text -ne "") { "Context: $text`nPick all correct answer letters." } else { "Pick all correct answer letters from the question in the image." } }
+        "wiki"   { if ($text -ne "") { $text } else { "Give a thorough explanation of what this image shows." } }
     }
 
     try {
@@ -107,7 +112,6 @@ if ($hasImage) {
     }
     $base64Image = [Convert]::ToBase64String($bytes)
 
-    # Build content array for user turn
     $userContent = @(
         @{ type = "text";      text      = $userPrompt },
         @{ type = "image_url"; image_url = @{ url = "data:image/png;base64,$base64Image" } }
@@ -143,7 +147,7 @@ if ($hasImage) {
     }
 }
 
-# -- Request ------------------------------------------------------------------
+# -- Request body -------------------------------------------------------------
 $body = @{
     model       = $model
     messages    = $messages
@@ -164,23 +168,18 @@ try {
         -ErrorAction Stop
 
     if (-not $response.choices -or $response.choices.Count -eq 0) {
-        FinishError "API returned no choices. Raw: $($response | ConvertTo-Json -Depth 5)"
+        FinishError "API returned no choices. Mode=$Mode Model=$model Raw: $($response | ConvertTo-Json -Depth 5)"
     }
 
-    # The model continues from the prefill, so prepend it back for parsing
     $raw = $response.choices[0].message.content.Trim()
 
     if ($Mode -eq "single") {
-        # The model was prefilled with "Answer: " and should continue with just a letter.
-        # Take the very first A-Z character — nothing else.
         $letter = ([regex]::Match($raw, '[A-Za-z]')).Value.ToUpper()
         if ($letter -eq "") { FinishError "Model gave no letter. Raw: $raw" }
         Finish $letter 0
     }
 
     if ($Mode -eq "multi") {
-        # Extract all uppercase-able letters that appear, preserve order, deduplicate.
-        # Range A-Z so questions with F, G options also work.
         $letters = [regex]::Matches($raw, '[A-Za-z]') |
                    ForEach-Object { $_.Value.ToUpper() } |
                    Select-Object -Unique
@@ -188,7 +187,6 @@ try {
         Finish ($letters -join ', ') 0
     }
 
-    # casual — return as-is
     Finish $raw 0
 
 } catch {
