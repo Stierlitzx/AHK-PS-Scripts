@@ -3,7 +3,7 @@
 
 ; ── Path constants ────────────────────────────────────────────────────────────
 global g_TempText      := A_Temp "\gemini_input.txt"
-global g_TempImage     := A_Temp "\gemini_image.png"
+global g_TempImage     := A_Temp "\gemini_image.jpg"
 global g_Output        := A_Temp "\gemini_output.txt"
 global g_Lock          := A_Temp "\gemini.lock"
 global g_ErrorLog      := A_Temp "\gemini_error.log"
@@ -83,8 +83,9 @@ RunQuery(mode) {
         . 'Add-Type -AssemblyName System.Drawing; '
         . '$img = [System.Windows.Forms.Clipboard]::GetImage(); '
         . 'if ($img -ne $null) { '
-        .     '$img.Save(\"' . g_TempImage . '\", [System.Drawing.Imaging.ImageFormat]::Png); '
-        .     '$img.Dispose() '
+        .     '$bmp = New-Object System.Drawing.Bitmap($img); '
+        .     '$bmp.Save(\"' . g_TempImage . '\", [System.Drawing.Imaging.ImageFormat]::Jpeg); '
+        .     '$bmp.Dispose(); $img.Dispose() '
         . '}"'
     RunWait(imageCapCmd, , "Hide")
 

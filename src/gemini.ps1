@@ -11,7 +11,7 @@ $lockPath   = "$env:TEMP\gemini.lock"
 $outputPath = "$env:TEMP\gemini_output.txt"
 $errorLog   = "$env:TEMP\gemini_error.log"
 $inputPath  = "$env:TEMP\gemini_input.txt"
-$imagePath  = "$env:TEMP\gemini_image.png"
+$imagePath  = "$env:TEMP\gemini_image.jpg"
 
 if (Test-Path $errorLog) { Remove-Item $errorLog -Force }
 
@@ -45,6 +45,14 @@ if ([string]::IsNullOrWhiteSpace($apiKey)) {
 }
 if ([string]::IsNullOrWhiteSpace($apiKey)) {
     FinishError "Missing API key. Set GROQ_API_KEY or create groq_api_key.local.txt next to the script."
+}
+
+# Clean the API key (extract the first valid gsk_ sequence to avoid invisible chars, BOMs, or stray text)
+if ($apiKey -match '(gsk_[a-zA-Z0-9_-]+)') {
+    $apiKey = $matches[1]
+} else {
+    # Fallback cleanup just in case there's a non-standard key format in the future
+    $apiKey = $apiKey -replace '[^a-zA-Z0-9_\-]', ''
 }
 
 # -- Read inputs --------------------------------------------------------------
@@ -114,7 +122,7 @@ if ($hasImage) {
 
     $userContent = @(
         @{ type = "text";      text      = $userPrompt },
-        @{ type = "image_url"; image_url = @{ url = "data:image/png;base64,$base64Image" } }
+        @{ type = "image_url"; image_url = @{ url = "data:image/jpeg;base64,$base64Image" } }
     )
 
     if ($prefill -ne "") {
@@ -162,7 +170,7 @@ try {
         -Uri "https://api.groq.com/openai/v1/chat/completions" `
         -Headers @{
             "Authorization" = "Bearer $apiKey"
-            "Content-Type"  = "application/json"
+            "Content-Type"  = "application/json; charset=utf-8"
         } `
         -Body $body `
         -ErrorAction Stop
@@ -194,6 +202,7 @@ try {
     if ($_.Exception.Response) {
         try {
             $stream = $_.Exception.Response.GetResponseStream()
+            if ($stream.CanSeek) { $stream.Position = 0 }
             $reader = [System.IO.StreamReader]::new($stream)
             $detail += " | HTTP body: " + $reader.ReadToEnd()
             $reader.Dispose()

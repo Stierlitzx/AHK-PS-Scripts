@@ -59,7 +59,7 @@ Double-click `src/assistant.ahk`. The AHK tray icon confirms it is active.
 ```
 Ctrl+Numpad_  ->  AHK writes clipboard text  ->  %TEMP%\gemini_input.txt
               ->  AHK captures clipboard image (RunWait, synchronous)
-                       ->  %TEMP%\gemini_image.png
+                       ->  %TEMP%\gemini_image.jpg
               ->  AHK launches gemini.ps1 (RunWait, blocks until exit)
                        ->  PS writes gemini.lock   (acquired)
                        ->  PS calls Groq API
@@ -77,7 +77,7 @@ polling anywhere in the flow.
 
 | Input | Model | Notes |
 |---|---|---|
-| Text only | `openai/gpt-oss-120b` | Best reasoning on Groq as of 2026 |
+| Text only | `llama-3.3-70b-versatile` | Best free text model on Groq as of 2026 |
 | Image (with or without text) | `meta-llama/llama-4-scout-17b-16e-instruct` | Only production vision model on Groq |
 
 ## API key lookup order
