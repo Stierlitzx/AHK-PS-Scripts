@@ -52,20 +52,16 @@ RunQuery(mode) {
     }
 
     ; 2. Snapshot whatever is already in the clipboard before we do anything
-    ;    This covers: copied text, copied image, or a previous result
     existingClip := A_Clipboard
 
     ; 3. Try to grab selected text by sending Ctrl+C
-    ;    We clear first so ClipWait can detect if anything new arrived
     A_Clipboard := ""
     Send("^c")
-    gotSelection := ClipWait(0.5)   ; wait up to 500ms for selection copy
+    gotSelection := ClipWait(0.5)
 
     if gotSelection && A_Clipboard != "" {
-        ; User had text selected — use it
         clipText := A_Clipboard
     } else {
-        ; Nothing selected — fall back to whatever was in clipboard before
         A_Clipboard := existingClip
         clipText := existingClip
     }
@@ -77,8 +73,9 @@ RunQuery(mode) {
         FileAppend(clipText, g_TempText)
 
     ; 5. Capture clipboard image synchronously
-    ;    RunWait guarantees handles are closed before PS reads the file
-    imageCapCmd := 'powershell -NoProfile -WindowStyle Hidden -Command "'
+    ;    -STA flag is REQUIRED: Clipboard COM calls need Single-Threaded Apartment.
+    ;    Without -STA, GetImage() always returns null even when an image is present.
+    imageCapCmd := 'powershell -STA -NoProfile -WindowStyle Hidden -Command "'
         . 'Add-Type -AssemblyName System.Windows.Forms; '
         . 'Add-Type -AssemblyName System.Drawing; '
         . '$img = [System.Windows.Forms.Clipboard]::GetImage(); '
@@ -124,7 +121,7 @@ RunQuery(mode) {
     SoundBeep(1500, 120)
 
     if (mode = "casual" || mode = "wiki") {
-        ; Casual: clipboard only, no tooltip — answer is long, just Ctrl+V it
+        ; Casual/wiki: clipboard only, no tooltip — answer is long, just Ctrl+V it
         return
     }
 

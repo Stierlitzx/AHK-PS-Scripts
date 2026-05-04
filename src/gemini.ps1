@@ -1,6 +1,4 @@
 # gemini.ps1 -- Unified Groq API backend
-# Save with UTF-8 BOM on Russian/Kazakh Windows (run once after editing):
-#   $p = ".\gemini.ps1"; [IO.File]::WriteAllText($p,(gc $p -Raw),[Text.UTF8Encoding]::new($true))
 param(
     [ValidateSet("casual","single","multi","wiki")]
     [string]$Mode = "casual"
@@ -30,29 +28,53 @@ function FinishError([string]$msg) {
     Finish "Error: $msg" 1
 }
 
+# Helper: read a key file in a BOM-safe, encoding-safe way.
+# Reads raw bytes, strips UTF-8 BOM (EF BB BF) and UTF-16 BOM if present,
+# then decodes as UTF-8 and trims all whitespace/control characters.
+function Read-KeyFile([string]$path) {
+    $bytes = [System.IO.File]::ReadAllBytes($path)
+    # Strip UTF-8 BOM
+    if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) {
+        $bytes = $bytes[3..($bytes.Length - 1)]
+    }
+    # Strip UTF-16 LE BOM
+    if ($bytes.Length -ge 2 -and $bytes[0] -eq 0xFF -and $bytes[1] -eq 0xFE) {
+        $bytes = $bytes[2..($bytes.Length - 1)]
+    }
+    $decoded = [System.Text.Encoding]::UTF8.GetString($bytes)
+    # Remove every control character and non-printable char (includes \r \n \t zero-width spaces etc.)
+    return ($decoded -replace '[\x00-\x1F\x7F\u200B\u200C\u200D\uFEFF]', '').Trim()
+}
+
 # -- API key: env var > .local.txt > .txt -------------------------------------
-$apiKey = $env:GROQ_API_KEY
+$apiKey = ""
+
+if (-not [string]::IsNullOrWhiteSpace($env:GROQ_API_KEY)) {
+    $apiKey = $env:GROQ_API_KEY.Trim()
+}
+
 if ([string]::IsNullOrWhiteSpace($apiKey)) {
     $p = Join-Path $PSScriptRoot "groq_api_key.local.txt"
-    if (Test-Path $p) { $apiKey = (Get-Content $p -Raw).Trim() }
+    if (Test-Path $p) { $apiKey = Read-KeyFile $p }
 }
+
 if ([string]::IsNullOrWhiteSpace($apiKey)) {
     $p = Join-Path $PSScriptRoot "groq_api_key.txt"
     if (Test-Path $p) {
-        $c = (Get-Content $p -Raw).Trim()
-        if ($c -notmatch '^(?i)put your (q|g)roq api here$') { $apiKey = $c }
+        $c = Read-KeyFile $p
+        if ($c -notmatch '^(?i)put your (g|q)roq api( key)? here$') { $apiKey = $c }
     }
 }
+
 if ([string]::IsNullOrWhiteSpace($apiKey)) {
     FinishError "Missing API key. Set GROQ_API_KEY or create groq_api_key.local.txt next to the script."
 }
 
-# Clean the API key (extract the first valid gsk_ sequence to avoid invisible chars, BOMs, or stray text)
-if ($apiKey -match '(gsk_[a-zA-Z0-9_-]+)') {
-    $apiKey = $matches[1]
-} else {
-    # Fallback cleanup just in case there's a non-standard key format in the future
-    $apiKey = $apiKey -replace '[^a-zA-Z0-9_\-]', ''
+# Final safety strip — keep only printable ASCII (Groq keys are alphanumeric + _ -)
+$apiKey = $apiKey -replace '[^a-zA-Z0-9_\-]', ''
+
+if ([string]::IsNullOrWhiteSpace($apiKey)) {
+    FinishError "API key is empty after cleanup. Check groq_api_key.local.txt for invisible/corrupt characters."
 }
 
 # -- Read inputs --------------------------------------------------------------
