@@ -17,7 +17,7 @@ global g_MouseOriginY  := 0
 ;   Ctrl+2  →  casual   3-5 sentence natural answer  → clipboard only (no tooltip)
 ;   Ctrl+3  →  single   one letter e.g. "B"          → clipboard + tooltip
 ;   Ctrl+4  →  multi    letters e.g. "A, C"          → clipboard + tooltip
-;   Ctrl+5  →  wiki     full encyclopedia answer     → clipboard + tooltip
+;   Ctrl+5  →  wiki     full encyclopedia answer     → clipboard only (no tooltip)
 ;   Ctrl+9  →  re-read  last result, no API call     → clipboard + tooltip
 
 ^2:: RunQuery("casual")
@@ -51,28 +51,17 @@ RunQuery(mode) {
             FileDelete(path)
     }
 
-    ; 2. Snapshot whatever is already in the clipboard before we do anything
-    existingClip := A_Clipboard
+    ; 2. Read whatever is already in the clipboard (text or image — user put it there)
+    ;    No Ctrl+C — we never interfere with the user's selection or active window.
+    clipText := A_Clipboard
 
-    ; 3. Try to grab selected text by sending Ctrl+C
-    A_Clipboard := ""
-    Send("^c")
-    gotSelection := ClipWait(0.5)
-
-    if gotSelection && A_Clipboard != "" {
-        clipText := A_Clipboard
-    } else {
-        A_Clipboard := existingClip
-        clipText := existingClip
-    }
-
-    ; 4. Write text to input file (may be empty if clipboard had an image)
+    ; 3. Write text to input file (may be empty if clipboard holds an image)
     if FileExist(g_TempText)
         FileDelete(g_TempText)
     if clipText != ""
         FileAppend(clipText, g_TempText)
 
-    ; 5. Capture clipboard image synchronously
+    ; 4. Capture clipboard image synchronously
     ;    -STA flag is REQUIRED: Clipboard COM calls need Single-Threaded Apartment.
     ;    Without -STA, GetImage() always returns null even when an image is present.
     imageCapCmd := 'powershell -STA -NoProfile -WindowStyle Hidden -Command "'
@@ -86,21 +75,21 @@ RunQuery(mode) {
         . '}"'
     RunWait(imageCapCmd, , "Hide")
 
-    ; 6. Run PS backend — blocks until exit
+    ; 5. Run PS backend — blocks until exit
     psCmd := 'powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden'
         . ' -File "' . g_PsScript . '" -Mode ' . mode
     exitCode := RunWait(psCmd, , "Hide")
 
-    ; 7. Orphaned lock cleanup
+    ; 6. Orphaned lock cleanup
     if FileExist(g_Lock)
         FileDelete(g_Lock)
 
-    ; 8. Read result
+    ; 7. Read result
     result := ""
     if FileExist(g_Output)
         result := Trim(FileRead(g_Output))
 
-    ; 9. Error handling
+    ; 8. Error handling
     if StrLen(result) = 0 {
         errDetail := ""
         if FileExist(g_ErrorLog)
@@ -116,7 +105,7 @@ RunQuery(mode) {
         return
     }
 
-    ; 10. Success
+    ; 9. Success
     A_Clipboard := result
     SoundBeep(1500, 120)
 

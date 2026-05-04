@@ -28,22 +28,30 @@ function FinishError([string]$msg) {
     Finish "Error: $msg" 1
 }
 
-# Helper: read a key file in a BOM-safe, encoding-safe way.
-# Reads raw bytes, strips UTF-8 BOM (EF BB BF) and UTF-16 BOM if present,
-# then decodes as UTF-8 and trims all whitespace/control characters.
+# Read a key file robustly: strips all BOMs, decodes as UTF-8,
+# removes every non-printable character, then trims whitespace.
 function Read-KeyFile([string]$path) {
-    $bytes = [System.IO.File]::ReadAllBytes($path)
-    # Strip UTF-8 BOM
+    try {
+        $bytes = [System.IO.File]::ReadAllBytes($path)
+    } catch {
+        return ""
+    }
+    # Strip UTF-8 BOM (EF BB BF)
     if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) {
         $bytes = $bytes[3..($bytes.Length - 1)]
     }
-    # Strip UTF-16 LE BOM
+    # Strip UTF-16 LE BOM (FF FE)
     if ($bytes.Length -ge 2 -and $bytes[0] -eq 0xFF -and $bytes[1] -eq 0xFE) {
         $bytes = $bytes[2..($bytes.Length - 1)]
     }
+    # Strip UTF-16 BE BOM (FE FF)
+    if ($bytes.Length -ge 2 -and $bytes[0] -eq 0xFE -and $bytes[1] -eq 0xFF) {
+        $bytes = $bytes[2..($bytes.Length - 1)]
+    }
     $decoded = [System.Text.Encoding]::UTF8.GetString($bytes)
-    # Remove every control character and non-printable char (includes \r \n \t zero-width spaces etc.)
-    return ($decoded -replace '[\x00-\x1F\x7F\u200B\u200C\u200D\uFEFF]', '').Trim()
+    # Remove ALL control chars, zero-width chars, BOM remnants, and any whitespace
+    $cleaned = $decoded -replace '[\x00-\x1F\x7F\u00A0\u200B\u200C\u200D\u2028\u2029\uFEFF]', ''
+    return $cleaned.Trim()
 }
 
 # -- API key: env var > .local.txt > .txt -------------------------------------
@@ -70,11 +78,17 @@ if ([string]::IsNullOrWhiteSpace($apiKey)) {
     FinishError "Missing API key. Set GROQ_API_KEY or create groq_api_key.local.txt next to the script."
 }
 
-# Final safety strip — keep only printable ASCII (Groq keys are alphanumeric + _ -)
-$apiKey = $apiKey -replace '[^a-zA-Z0-9_\-]', ''
+# Groq keys look like:  gsk_xxxxxxxxxxxxxxxxxxxx
+# Only keep characters valid in a Groq key: letters, digits, underscore, hyphen
+$apiKey = ($apiKey -replace '[^a-zA-Z0-9_\-]', '').Trim()
 
 if ([string]::IsNullOrWhiteSpace($apiKey)) {
-    FinishError "API key is empty after cleanup. Check groq_api_key.local.txt for invisible/corrupt characters."
+    FinishError "API key is empty after cleanup. Open groq_api_key.txt in Notepad, select all, delete, retype/paste the key, and save as UTF-8 without BOM."
+}
+
+# Sanity-check: Groq keys start with "gsk_"
+if (-not $apiKey.StartsWith("gsk_")) {
+    FinishError "API key does not start with 'gsk_'. Current value starts with: '$($apiKey.Substring(0, [Math]::Min(6,$apiKey.Length)))'. Re-copy the key from console.groq.com."
 }
 
 # -- Read inputs --------------------------------------------------------------
@@ -87,7 +101,7 @@ if (Test-Path $inputPath) {
 $hasImage = Test-Path $imagePath
 
 if ($text -eq "" -and -not $hasImage) {
-    FinishError "No input: clipboard was empty and no image was captured."
+    FinishError "No input: clipboard was empty and no image was captured. Copy some text or an image first, then press the hotkey."
 }
 
 # -- Models -------------------------------------------------------------------
