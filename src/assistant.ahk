@@ -122,7 +122,7 @@ RunQuery(mode) {
     A_Clipboard := result
     SoundBeep(1500, 120)
 
-    if (mode = "casual") {
+    if (mode = "casual" || mode = "wiki") {
         ; Casual: clipboard only, no tooltip — answer is long, just Ctrl+V it
         return
     }
