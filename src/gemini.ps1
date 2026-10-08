@@ -105,10 +105,13 @@ if ($text -eq "" -and -not $hasImage) {
 }
 
 # -- Models -------------------------------------------------------------------
-#   Vision (image present): llama-4-scout  — only free vision model on Groq
-#   Text only:              llama-3.3-70b-versatile — best free text model on Groq
-$textModel   = "llama-3.3-70b-versatile"
-$visionModel = "meta-llama/llama-4-scout-17b-16e-instruct"
+#   Verified 2026-10-08 against https://console.groq.com/docs/rate-limits
+#   Vision: qwen3.8-27b (preview); text: gpt-oss-120b (production).
+#   Both are available on the Free Plan. Keep reasoning effort low and
+#   reserve extra completion tokens for reasoning before the final answer.
+$textModel   = "openai/gpt-oss-120b"
+$visionModel = "qwen/qwen3.8-27b"
+$reasoningEffort = "low"
 
 # -- Prompts ------------------------------------------------------------------
 switch ($Mode) {
@@ -121,13 +124,13 @@ switch ($Mode) {
     "single" {
         $systemPrompt = "You are taking a multiple choice exam. The question has EXACTLY ONE correct answer. Output the single letter of the correct answer and nothing else. No words, no punctuation, no explanation."
         $temperature  = 0.0
-        $max_tokens   = 2
+        $max_tokens   = 128
         $prefill      = "Answer: "
     }
     "multi" {
         $systemPrompt = "You are taking a multiple choice exam. One or more answers may be correct. Output ONLY the correct letters separated by a comma and space. No words, no explanation. Example outputs: A / A, C / A, B, D"
         $temperature  = 0.0
-        $max_tokens   = 15
+        $max_tokens   = 128
         $prefill      = "Answer: "
     }
     "wiki" {
@@ -193,11 +196,20 @@ if ($hasImage) {
 
 # -- Request body -------------------------------------------------------------
 $body = @{
-    model       = $model
-    messages    = $messages
-    temperature = $temperature
-    max_tokens  = $max_tokens
-} | ConvertTo-Json -Depth 10
+    model            = $model
+    messages         = $messages
+    temperature      = $temperature
+    max_completion_tokens = $max_tokens + 1024
+    reasoning_effort = $reasoningEffort
+}
+# Qwen otherwise includes <think> text in content, which breaks letter modes.
+# GPT-OSS uses include_reasoning instead of reasoning_format.
+if ($hasImage) {
+    $body.reasoning_format = "hidden"
+} else {
+    $body.include_reasoning = $false
+}
+$body = $body | ConvertTo-Json -Depth 10
 
 # -- API call -----------------------------------------------------------------
 try {

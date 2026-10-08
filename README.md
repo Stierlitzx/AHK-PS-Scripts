@@ -78,8 +78,12 @@ polling anywhere in the flow.
 
 | Input | Model | Notes |
 |---|---|---|
-| Text only | `llama-3.3-70b-versatile` | Best free text model on Groq as of 2026 |
-| Image (with or without text) | `meta-llama/llama-4-scout-17b-16e-instruct` | Only production vision model on Groq |
+| Text only | `openai/gpt-oss-120b` | Production text/reasoning model; available on the Free Plan |
+| Image (with or without text) | `qwen/qwen3.8-27b` | Preview vision/reasoning model; available on the Free Plan |
+
+Verified on **2026-10-08** against Groq's [supported models](https://console.groq.com/docs/models), [vision documentation](https://console.groq.com/docs/vision), and [Free Plan limits](https://console.groq.com/docs/rate-limits). Both models currently list 30 requests/minute, 1,000 requests/day, 8,000 tokens/minute, and 200,000 tokens/day; account-specific limits may differ. Qwen is a preview model and may change or be discontinued.
+
+Requests use low reasoning effort, with 1,024 extra completion tokens reserved for reasoning. Only the final answer is returned: `include_reasoning=false` for GPT-OSS and `reasoning_format=hidden` for Qwen, following Groq's [reasoning documentation](https://console.groq.com/docs/reasoning).
 
 ## API key lookup order
 
