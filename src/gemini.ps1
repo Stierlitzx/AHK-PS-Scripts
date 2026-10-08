@@ -213,15 +213,25 @@ $body = $body | ConvertTo-Json -Depth 10
 
 # -- API call -----------------------------------------------------------------
 try {
-    $response = Invoke-RestMethod `
+    $httpResponse = Invoke-WebRequest -UseBasicParsing `
         -Method POST `
         -Uri "https://api.groq.com/openai/v1/chat/completions" `
         -Headers @{
             "Authorization" = "Bearer $apiKey"
             "Content-Type"  = "application/json; charset=utf-8"
         } `
-        -Body $body `
+        -Body ([System.Text.Encoding]::UTF8.GetBytes($body)) `
         -ErrorAction Stop
+
+    # Windows PowerShell 5.1 can misdecode JSON when no response charset is set.
+    # Decode the original bytes as UTF-8 before parsing the JSON.
+    $httpResponse.RawContentStream.Position = 0
+    $responseReader = [System.IO.StreamReader]::new($httpResponse.RawContentStream, [System.Text.Encoding]::UTF8)
+    try {
+        $response = $responseReader.ReadToEnd() | ConvertFrom-Json
+    } finally {
+        $responseReader.Dispose()
+    }
 
     if (-not $response.choices -or $response.choices.Count -eq 0) {
         FinishError "API returned no choices. Mode=$Mode Model=$model Raw: $($response | ConvertTo-Json -Depth 5)"

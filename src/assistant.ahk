@@ -31,7 +31,7 @@ global g_MouseOriginY  := 0
         ShowToolTip("No previous result found.", 3000)
         return
     }
-    result := Trim(FileRead(g_Output))
+    result := Trim(FileRead(g_Output, "UTF-8"))
     if StrLen(result) = 0 {
         ShowToolTip("Last output file is empty.", 3000)
         return
@@ -59,7 +59,7 @@ RunQuery(mode) {
     if FileExist(g_TempText)
         FileDelete(g_TempText)
     if clipText != ""
-        FileAppend(clipText, g_TempText)
+        FileAppend(clipText, g_TempText, "UTF-8")
 
     ; 4. Capture clipboard image synchronously
     ;    -STA flag is REQUIRED: Clipboard COM calls need Single-Threaded Apartment.
@@ -87,13 +87,13 @@ RunQuery(mode) {
     ; 7. Read result
     result := ""
     if FileExist(g_Output)
-        result := Trim(FileRead(g_Output))
+        result := Trim(FileRead(g_Output, "UTF-8"))
 
     ; 8. Error handling
     if StrLen(result) = 0 {
         errDetail := ""
         if FileExist(g_ErrorLog)
-            errDetail := "`n" . Trim(FileRead(g_ErrorLog))
+            errDetail := "`n" . Trim(FileRead(g_ErrorLog, "UTF-8"))
         ShowToolTip("Error: empty response (exit " . exitCode . ")" . errDetail, 8000)
         SoundBeep(400, 300)
         return
