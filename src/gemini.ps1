@@ -107,11 +107,11 @@ if ($text -eq "" -and -not $hasImage) {
 # -- Models -------------------------------------------------------------------
 #   Verified 2026-10-08 against https://console.groq.com/docs/rate-limits
 #   Vision: qwen3.8-27b (preview); text: gpt-oss-120b (production).
-#   Both are available on the Free Plan. Keep reasoning effort low and
+#   Both are available on the Free Plan. Use medium reasoning effort and
 #   reserve extra completion tokens for reasoning before the final answer.
 $textModel   = "openai/gpt-oss-120b"
 $visionModel = "qwen/qwen3.8-27b"
-$reasoningEffort = "low"
+$reasoningEffort = "medium"
 
 # -- Prompts ------------------------------------------------------------------
 switch ($Mode) {
@@ -140,6 +140,20 @@ switch ($Mode) {
         $prefill      = ""
     }
 }
+
+# -- Course context -----------------------------------------------------------
+$courseContext = @"
+Context: the questions come from a university course called Data Ethics and Applied Analytics. Answer the way the course frames the topic, and pick the option that course reasoning supports most directly, even if another option is arguable in real life. Do not invent facts that are not in the question. For wording like "most likely" or "probably", choose the simplest explanation.
+Course ideas:
+Sampling rule: if a survey or sample is random and drawn from the same group you want to learn about (for example your own current customers evaluating a change to your own product), the results are likely useful even with a low response rate, because the bias is a limitation, not a reason to discard the data. Answer that the results are not useful only when the sample comes from a different group than the target (for example current customers used to judge how to attract new ones).
+Validity vs fairness: an algorithm can predict well and still be unfair if it works through a proxy for something that should not count (wealth, race, gender, and so on). Disclosing a discriminatory criterion does not make it ethical.
+Do Not Surprise rule: it is violated only when customers would be unpleasantly surprised or harmed by how their data is used. If the data already collected is used to improve the service those same customers receive, and nothing is sold, exposed or used against them, the answer is that it does not violate the rule. Ignore who in the story is surprised by the result, such as the analyst, the boss or the company.
+Incentives: companies act in their economic interest and are not motivated to fix a record when the correction brings them no revenue. Under the economic utility view of ethics, even self-interested companies have reasons to behave ethically.
+Data quality: a credit agency does not simply accept a complaint, it checks it with the data source. An odd entry in a review (such as a one-star rating with praise) is most likely a simple user mistake, not a hidden cause.
+Aggregation: averages over a whole group can hide differences between subgroups. Group averages are still a meaningful description of the two groups, but they do not transfer to individuals or matched pairs.
+"@
+
+$systemPrompt = "$courseContext`n`n$systemPrompt"
 
 # -- Build messages -----------------------------------------------------------
 if ($hasImage) {
@@ -192,6 +206,10 @@ if ($hasImage) {
             @{ role = "user";   content = $text }
         )
     }
+}
+
+if (-not $hasImage -and ($Mode -eq "single" -or $Mode -eq "multi")) {
+    $max_tokens = 1024
 }
 
 # -- Request body -------------------------------------------------------------
