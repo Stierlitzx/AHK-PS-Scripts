@@ -107,11 +107,11 @@ if ($text -eq "" -and -not $hasImage) {
 # -- Models -------------------------------------------------------------------
 #   Verified 2026-10-08 against https://console.groq.com/docs/rate-limits
 #   Vision: qwen3.8-27b (preview); text: gpt-oss-120b (production).
-#   Both are available on the Free Plan. Keep reasoning effort low and
+#   Both are available on the Free Plan. Use medium reasoning effort and
 #   reserve extra completion tokens for reasoning before the final answer.
 $textModel   = "openai/gpt-oss-120b"
 $visionModel = "qwen/qwen3.8-27b"
-$reasoningEffort = "low"
+$reasoningEffort = "medium"
 
 # -- Prompts ------------------------------------------------------------------
 switch ($Mode) {
@@ -140,6 +140,11 @@ switch ($Mode) {
         $prefill      = ""
     }
 }
+
+# -- General context ----------------------------------------------------------
+$generalContext = "You are a general-purpose assistant. Answer questions across any subject using the provided text or image and relevant knowledge. Do not assume a specific course, curriculum, or subject unless the user provides that context. Do not invent facts or unsupported assumptions."
+
+$systemPrompt = "$generalContext`n`n$systemPrompt"
 
 # -- Build messages -----------------------------------------------------------
 if ($hasImage) {
@@ -192,6 +197,10 @@ if ($hasImage) {
             @{ role = "user";   content = $text }
         )
     }
+}
+
+if (-not $hasImage -and ($Mode -eq "single" -or $Mode -eq "multi")) {
+    $max_tokens = 1024
 }
 
 # -- Request body -------------------------------------------------------------
