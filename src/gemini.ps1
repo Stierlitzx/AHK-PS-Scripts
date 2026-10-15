@@ -1,6 +1,6 @@
 # gemini.ps1 -- Unified Groq API backend
 param(
-    [ValidateSet("casual","single","multi","wiki")]
+    [ValidateSet("casual","single","multi","wiki","code")]
     [string]$Mode = "casual"
 )
 
@@ -107,11 +107,11 @@ if ($text -eq "" -and -not $hasImage) {
 # -- Models -------------------------------------------------------------------
 #   Verified 2026-10-08 against https://console.groq.com/docs/rate-limits
 #   Vision: qwen3.8-27b (preview); text: gpt-oss-120b (production).
-#   Both are available on the Free Plan. Keep reasoning effort low and
+#   Both are available on the Free Plan. Use medium reasoning effort and
 #   reserve extra completion tokens for reasoning before the final answer.
 $textModel   = "openai/gpt-oss-120b"
 $visionModel = "qwen/qwen3.8-27b"
-$reasoningEffort = "low"
+$reasoningEffort = "medium"
 
 # -- Prompts ------------------------------------------------------------------
 switch ($Mode) {
@@ -139,7 +139,29 @@ switch ($Mode) {
         $max_tokens   = 600
         $prefill      = ""
     }
+    "code" {
+        $systemPrompt = "You are a programming assistant for a Parallel Computing course. Write a complete, working solution in the language the task requires: Python if it mentions multiprocessing, threading, concurrent.futures, mpi4py or numpy; C if it mentions OpenMP pragmas, MPI, pthreads, CUDA or kernels; if no language is stated, default to Python unless the task clearly needs OpenMP/MPI/CUDA, then use C. If the task already contains code or a snippet, keep its language, complete it and fix it. A bare problem statement with no code means: write the full program from scratch. Output ONLY the raw code, no markdown fences, no explanations, no comments beyond what the code itself needs to compile and run."
+        $temperature  = 0.2
+        $max_tokens   = 1024
+        $prefill      = ""
+    }
 }
+
+# -- Course context -----------------------------------------------------------
+$courseContext = @"
+Context: the questions come from a university course called Parallel Computing (SDU). Answer the way the course frames the topic, and pick the option that course reasoning supports most directly, even if another option is arguable in real life. Do not invent facts that are not in the question. For wording like "most likely" or "probably", choose the simplest explanation.
+Course ideas:
+Architectures: multi-core CPUs use shared memory; distributed clusters use distributed memory with separate address spaces per node; GPUs are massively data-parallel accelerators with their own device memory and host-device transfers.
+Programming models: OpenMP is for shared-memory parallelism on CPUs (threads, pragmas such as parallel for, critical sections, barriers). MPI is for distributed memory (explicit message passing between processes: point-to-point send/recv, collectives like broadcast, scatter, gather, reduce, barrier). CUDA is for GPUs (kernels executed by many threads organized in grids and blocks; watch memory coalescing and host-device transfer cost).
+Parallelism types: task parallelism means different tasks run concurrently; data parallelism means the same operation runs on different data partitions. Know basic terminology: speedup = serial time / parallel time; efficiency = speedup / number of processors; strong scaling fixes problem size while adding processors; weak scaling grows the problem with the processor count.
+Algorithm design: decompose the problem (data/domain decomposition vs task/functional decomposition), then map work to processors. Prefer coarse granularity when communication is expensive; fine granularity only when overhead stays low. Balance computation against communication cost.
+Correctness challenges: shared-memory programs suffer race conditions when threads access shared data without synchronization; use locks, critical sections, atomics and barriers. Message-passing programs suffer deadlocks and communication mismatch (for example blocking send/recv in the wrong order); use matching sends and receives, non-blocking calls or collectives, and overlap communication with computation where possible.
+Load balancing: uneven work distribution leaves processors idle and kills speedup. Use static distribution for regular workloads and dynamic scheduling or work stealing for irregular ones.
+Performance laws: Amdahl's law says the serial fraction of a program limits maximum speedup no matter how many processors are added. Gustafson's law says scaled speedup is possible when the problem grows with the machine. Always account for overhead: communication, synchronization, and load imbalance.
+Optimization: minimize communication volume and synchronization points, maximize data locality, avoid false sharing, keep load balanced, and measure before optimizing (speedup, efficiency, scalability).
+"@
+
+$systemPrompt = "$courseContext`n`n$systemPrompt"
 
 # -- Build messages -----------------------------------------------------------
 if ($hasImage) {
@@ -150,6 +172,7 @@ if ($hasImage) {
         "single" { if ($text -ne "") { "Context: $text`nPick the single correct answer letter." } else { "Pick the single correct answer letter from the question in the image." } }
         "multi"  { if ($text -ne "") { "Context: $text`nPick all correct answer letters." } else { "Pick all correct answer letters from the question in the image." } }
         "wiki"   { if ($text -ne "") { $text } else { "Give a thorough explanation of what this image shows." } }
+        "code"   { if ($text -ne "") { "Task: $text`nWrite the complete solution code for the task in the image." } else { "Write the complete solution code for the task in the image." } }
     }
 
     try {
@@ -192,6 +215,10 @@ if ($hasImage) {
             @{ role = "user";   content = $text }
         )
     }
+}
+
+if (-not $hasImage -and ($Mode -eq "single" -or $Mode -eq "multi" -or $Mode -eq "code")) {
+    $max_tokens = 1024
 }
 
 # -- Request body -------------------------------------------------------------
@@ -251,6 +278,13 @@ try {
                    Select-Object -Unique
         if ($letters.Count -eq 0) { FinishError "Model gave no letters. Raw: $raw" }
         Finish ($letters -join ', ') 0
+    }
+
+    if ($Mode -eq "code") {
+        # Model sometimes wraps code in ``` fences despite the prompt — strip them.
+        $raw = $raw -replace '(?m)^```[a-zA-Z0-9+\-#]*\s*\r?\n', '' -replace '(?m)^```\s*$', ''
+        $raw = $raw.Trim()
+        Finish $raw 0
     }
 
     Finish $raw 0

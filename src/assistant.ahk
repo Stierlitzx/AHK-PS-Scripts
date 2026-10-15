@@ -18,12 +18,14 @@ global g_MouseOriginY  := 0
 ;   Ctrl+3  →  single   one letter e.g. "B"          → clipboard + tooltip
 ;   Ctrl+4  →  multi    letters e.g. "A, C"          → clipboard + tooltip
 ;   Ctrl+5  →  wiki     full encyclopedia answer     → clipboard only (no tooltip)
+;   Ctrl+6  →  code     Python/C solution code only  → clipboard only (no tooltip)
 ;   Ctrl+9  →  re-read  last result, no API call     → clipboard + tooltip
 
 ^2:: RunQuery("casual")
 ^3:: RunQuery("single")
 ^4:: RunQuery("multi")
 ^5:: RunQuery("wiki")
+^6:: RunQuery("code")
 
 ^9:: {
     global g_Output
@@ -109,8 +111,8 @@ RunQuery(mode) {
     A_Clipboard := result
     SoundBeep(1500, 120)
 
-    if (mode = "casual" || mode = "wiki") {
-        ; Casual/wiki: clipboard only, no tooltip — answer is long, just Ctrl+V it
+    if (mode = "casual" || mode = "wiki" || mode = "code") {
+        ; Casual/wiki/code: clipboard only, no tooltip — answer is long, just Ctrl+V it
         return
     }
 

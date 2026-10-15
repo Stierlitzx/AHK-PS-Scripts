@@ -83,7 +83,11 @@ polling anywhere in the flow.
 
 Verified on **2026-10-08** against Groq's [supported models](https://console.groq.com/docs/models), [vision documentation](https://console.groq.com/docs/vision), and [Free Plan limits](https://console.groq.com/docs/rate-limits). Both models currently list 30 requests/minute, 1,000 requests/day, 8,000 tokens/minute, and 200,000 tokens/day; account-specific limits may differ. Qwen is a preview model and may change or be discontinued.
 
-Requests use low reasoning effort, with 1,024 extra completion tokens reserved for reasoning. Only the final answer is returned: `include_reasoning=false` for GPT-OSS and `reasoning_format=hidden` for Qwen, following Groq's [reasoning documentation](https://console.groq.com/docs/reasoning).
+All modes use medium reasoning effort for both text-only and image requests, with 1,024 extra completion tokens reserved for reasoning. Only the final answer is returned: `include_reasoning=false` for GPT-OSS and `reasoning_format=hidden` for Qwen, following Groq's [reasoning documentation](https://console.groq.com/docs/reasoning).
+
+### Offline validation
+
+Run `powershell -NoProfile -ExecutionPolicy Bypass -File .\tests\reasoning_effort.ps1` from the project folder. This checks PowerShell syntax and request construction for every supported mode with text-only, image-only, and combined inputs, without reading API keys or making API calls.
 
 ## API key lookup order
 
