@@ -149,16 +149,16 @@ switch ($Mode) {
 
 # -- Course context -----------------------------------------------------------
 $courseContext = @"
-Context: the questions come from a university course called Parallel Computing (SDU). Answer the way the course frames the topic, and pick the option that course reasoning supports most directly, even if another option is arguable in real life. Do not invent facts that are not in the question. For wording like "most likely" or "probably", choose the simplest explanation.
-Course ideas:
-Architectures: multi-core CPUs use shared memory; distributed clusters use distributed memory with separate address spaces per node; GPUs are massively data-parallel accelerators with their own device memory and host-device transfers.
-Programming models: OpenMP is for shared-memory parallelism on CPUs (threads, pragmas such as parallel for, critical sections, barriers). MPI is for distributed memory (explicit message passing between processes: point-to-point send/recv, collectives like broadcast, scatter, gather, reduce, barrier). CUDA is for GPUs (kernels executed by many threads organized in grids and blocks; watch memory coalescing and host-device transfer cost).
-Parallelism types: task parallelism means different tasks run concurrently; data parallelism means the same operation runs on different data partitions. Know basic terminology: speedup = serial time / parallel time; efficiency = speedup / number of processors; strong scaling fixes problem size while adding processors; weak scaling grows the problem with the processor count.
-Algorithm design: decompose the problem (data/domain decomposition vs task/functional decomposition), then map work to processors. Prefer coarse granularity when communication is expensive; fine granularity only when overhead stays low. Balance computation against communication cost.
-Correctness challenges: shared-memory programs suffer race conditions when threads access shared data without synchronization; use locks, critical sections, atomics and barriers. Message-passing programs suffer deadlocks and communication mismatch (for example blocking send/recv in the wrong order); use matching sends and receives, non-blocking calls or collectives, and overlap communication with computation where possible.
-Load balancing: uneven work distribution leaves processors idle and kills speedup. Use static distribution for regular workloads and dynamic scheduling or work stealing for irregular ones.
-Performance laws: Amdahl's law says the serial fraction of a program limits maximum speedup no matter how many processors are added. Gustafson's law says scaled speedup is possible when the problem grows with the machine. Always account for overhead: communication, synchronization, and load imbalance.
-Optimization: minimize communication volume and synchronization points, maximize data locality, avoid false sharing, keep load balanced, and measure before optimizing (speedup, efficiency, scalability).
+Context: university course Parallel Computing (SDU). Pick the option course reasoning supports most directly, even if another is arguable in real life. Do not invent facts. For "most likely"/"probably", choose the simplest explanation.
+Rules:
+- Multi-core CPU = shared memory; cluster = distributed memory (separate address spaces); GPU = data-parallel accelerator with its own memory and costly host-device transfers.
+- OpenMP = shared-memory threads (parallel for, critical, barrier). MPI = distributed processes with explicit messages (send/recv; bcast, scatter, gather, reduce, barrier). CUDA = kernels on grids of thread blocks; mind coalescing and transfers.
+- Task parallelism = different tasks at once; data parallelism = same operation on data partitions. Speedup = T_serial / T_parallel; efficiency = speedup / p. Strong scaling: fixed problem size; weak scaling: problem grows with p.
+- Design: decompose (domain/data vs functional/task), then map. Use coarse granularity when communication is expensive.
+- Races in shared memory: fix with locks, critical sections, atomics, barriers. Deadlocks in MPI (blocking send/recv in wrong order): match calls, use non-blocking or collectives, overlap communication with computation.
+- Load imbalance kills speedup: static scheduling for regular work, dynamic or work stealing for irregular.
+- Amdahl: the serial fraction caps speedup regardless of p. Gustafson: scaled speedup grows with problem size. Count overhead: communication, synchronization, imbalance.
+- Optimize: less communication and synchronization, better locality, avoid false sharing, measure first.
 "@
 
 $systemPrompt = "$courseContext`n`n$systemPrompt"
