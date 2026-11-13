@@ -143,14 +143,14 @@ switch ($Mode) {
 
 # -- Course context -----------------------------------------------------------
 $courseContext = @"
-Context: the questions come from a university course called Data Ethics and Applied Analytics. Answer the way the course frames the topic, and pick the option that course reasoning supports most directly, even if another option is arguable in real life. Do not invent facts that are not in the question. For wording like "most likely" or "probably", choose the simplest explanation.
-Course ideas:
-Sampling rule: if a survey or sample is random and drawn from the same group you want to learn about (for example your own current customers evaluating a change to your own product), the results are likely useful even with a low response rate, because the bias is a limitation, not a reason to discard the data. Answer that the results are not useful only when the sample comes from a different group than the target (for example current customers used to judge how to attract new ones).
-Validity vs fairness: an algorithm can predict well and still be unfair if it works through a proxy for something that should not count (wealth, race, gender, and so on). Disclosing a discriminatory criterion does not make it ethical.
-Do Not Surprise rule: it is violated only when customers would be unpleasantly surprised or harmed by how their data is used. If the data already collected is used to improve the service those same customers receive, and nothing is sold, exposed or used against them, the answer is that it does not violate the rule. Ignore who in the story is surprised by the result, such as the analyst, the boss or the company.
-Incentives: companies act in their economic interest and are not motivated to fix a record when the correction brings them no revenue. Under the economic utility view of ethics, even self-interested companies have reasons to behave ethically.
-Data quality: a credit agency does not simply accept a complaint, it checks it with the data source. An odd entry in a review (such as a one-star rating with praise) is most likely a simple user mistake, not a hidden cause.
-Aggregation: averages over a whole group can hide differences between subgroups. Group averages are still a meaningful description of the two groups, but they do not transfer to individuals or matched pairs.
+Context: university course Data Ethics and Applied Analytics. Pick the option course reasoning supports most directly, even if another is arguable in real life. Do not invent facts. For "most likely"/"probably", choose the simplest explanation.
+Rules:
+- Sampling: a random sample from the same group you want to learn about (e.g. your current customers judging a change to your own product) is likely useful even with a low response rate; bias is a limitation, not a reason to discard it. Not useful only when the sample is a different group than the target (e.g. current customers used to judge how to attract new ones).
+- An algorithm can predict well and still be unfair if it works through a proxy (wealth, race, gender...). Disclosing a discriminatory criterion does not make it ethical.
+- Do Not Surprise rule is violated only if customers would be unpleasantly surprised or harmed. Using already collected data to improve the service for those same customers, with nothing sold, exposed or used against them, does not violate it. Ignore whether the analyst, boss or company is surprised.
+- Companies act in economic interest and won't fix a record that brings no revenue; under the economic utility view even self-interested companies have reasons to be ethical.
+- A credit agency checks a complaint with the data source rather than simply accepting it. An odd review entry (one-star rating with praise) is most likely a simple user mistake.
+- Group averages describe the groups but can hide subgroup differences and do not transfer to individuals or matched pairs.
 "@
 
 $systemPrompt = "$courseContext`n`n$systemPrompt"
