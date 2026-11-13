@@ -1,6 +1,30 @@
-# General Assistant
+# IT Audit and Controls Assistant
 
-A general-purpose AI assistant hotkey utility for Windows, usable across subjects and everyday tasks without a fixed course context. Captures clipboard text and/or screenshot, sends it to the Groq API, and returns the answer instantly via tooltip and clipboard.
+An AI assistant hotkey utility for Windows, tuned for the university course **IT Audit and Controls**. Captures clipboard text and/or screenshot, sends it to the Groq API with a course-specific system prompt, and returns the answer instantly via tooltip and clipboard.
+
+## Course
+
+The course provides a comprehensive understanding of auditing principles and practices within information technology. Participants learn how to assess and evaluate IT systems, processes, and controls to ensure compliance with regulations, mitigate risks, and safeguard organizational assets. The aim is to equip learners to conduct effective IT audits, identify vulnerabilities and weaknesses in IT environments, and recommend strategies for enhancing security and compliance, contributing to robust IT governance frameworks that manage IT risks and protect against cyber threats.
+
+| Week | Topic | Format |
+|---|---|---|
+| 1 | Introduction to IT Audit and Governance | Reading / Seminar discussion |
+| 2 | IT Control Frameworks: COBIT, ISO 27001 | Lecture, Homework 1 |
+| 3 | Risk Management in IT Audit | Lecture, case discussion |
+| 4 | IT General Controls and Application Controls | Lecture, Homework 2 |
+| 5 | Auditing Networks and Cloud Environments | Lecture, case study |
+| 6 | Regulatory Compliance and IT Audit | Lecture, discussion |
+| 7 | Midterm Review and Exam | Review and midterm exam |
+| 8 | Data Analytics in IT Auditing | Lecture, practical exercise |
+| 9 | Cybersecurity Controls and Incident Management | Lecture, scenario discussion |
+| 10 | Auditing Business Continuity and Disaster Recovery | Lecture |
+| 11 | Emerging Technologies and IT Auditing | Lecture, discussion |
+| 12 | Auditing in Agile and DevOps Environments | Lecture, practical examples |
+| 13-15 | Case Studies in IT Auditing | Research paper presentation |
+
+### AI course prompt
+
+`src/gemini.ps1` prepends a `$courseContext` block to every mode's system prompt. It tells the model to answer as an IT auditor following the CISA / ISACA body of knowledge and lists exam reasoning rules per topic: auditor independence and "what first" questions, audit process and evidence reliability, the audit risk model and risk responses, control types and segregation of duties, ITGCs and application controls, COBIT 2019 / ISO 27001:2022 / NIST CSF 2.0, cloud shared responsibility and SOC 1 / SOC 2 reports, SOX 404 / GDPR / PCI DSS, CAATs and data analytics, NIST SP 800-61 incident handling, BIA / RTO / RPO and DR test types, emerging technologies, and DevOps pipeline controls. Edit that block to add lecture-specific rules.
 
 ## Files
 
